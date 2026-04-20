@@ -29,6 +29,6 @@ Add multiple emails / phone numbers per contact
     ],
     "demo": [],
     'installable': True,
-    'auto_install': True,
+    'auto_install': False,
     'application': False,
 }
