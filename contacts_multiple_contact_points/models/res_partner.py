@@ -28,19 +28,29 @@ class ResPartner(models.Model):
                     and cp.is_default).name
 
     def _set_contact_point(self, contact_point_type):
-        if self[contact_point_type]:
-            contact_point = self.contact_point_ids.filtered(
-                lambda cp: cp.name == self[contact_point_type]
-                           and cp.contact_point_type == contact_point_type)
+        # Inverse methods are called with a batch of records, not a singleton:
+        # models.create() groups records by inverse and calls it once for all
+        # of them. Reading a field on a multi-record set raises
+        # "Expected singleton", so iterate.
+        for partner in self:
+            value = partner[contact_point_type]
+            if not value:
+                continue
+            contact_point = partner.contact_point_ids.filtered(
+                lambda cp: cp.name == value
+                and cp.contact_point_type == contact_point_type)
             if not contact_point:
-                self.contact_point_ids.create({
-                    'name': self[contact_point_type],
-                    'partner_id': self.id,
+                partner.contact_point_ids.create({
+                    'name': value,
+                    'partner_id': partner.id,
                     'contact_point_type': contact_point_type,
                     'is_default': True,
                 })
-            elif not contact_point.is_default:
-                contact_point.is_default = True
+            else:
+                # Reading .is_default would break on homonym contact points:
+                # only the default one is unique, duplicates are not.
+                contact_point.filtered(
+                    lambda cp: not cp.is_default).is_default = True
 
     def get_fields_contact_points(self):
         return {'phone', 'mobile', 'email'}
